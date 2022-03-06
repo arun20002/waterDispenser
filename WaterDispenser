@@ -1,0 +1,114 @@
+/************************************************
+**************** Header files *******************
+*************************************************/
+#include <ESP8266WiFi.h>
+#include <FirebaseArduino.h>
+
+/*************************************************
+** Credentials of Wifi and firebase connection ***
+	Change credentials here
+		|
+		|
+		V
+**************************************************/
+#define FIREBASE_HOST ""
+#define FIREBASE_AUTH ""
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+
+//ultra sonic  --> NodeMCU 
+#define trigPin D5
+#define echoPin D6
+
+//define sound speed in cm/uS
+#define SOUND_SPEED 0.034
+
+long duration;
+float distanceCm;
+
+void setup() {
+
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+  
+  Serial.begin(9600);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("connecting");
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println();
+  Serial.print("connected: ");
+  Serial.println(WiFi.localIP());
+  
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+}
+
+int n=0;
+void loop() {
+
+   // Clears the trigPin
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  
+  // Calculate the distance
+  distanceCm = duration * SOUND_SPEED/2;
+
+  Serial.print("distanceCm");
+  Serial.print(distanceCm);
+  
+  
+  
+  // set value
+  Firebase.setFloat("Distance", distanceCm);
+  // handle error
+  if (Firebase.failed()) {
+      Serial.print("setting /number failed:");
+      Serial.println(Firebase.error());  
+      return;
+  }
+  delay(1000);
+  
+
+
+  // get value 
+  Serial.print("Distance: ");
+  Serial.println(Firebase.getFloat("Distance"));
+  delay(1000);
+
+  // remove value
+  Firebase.remove("Distance");
+  delay(1000);
+
+  
+  // set bool value
+  Firebase.setBool("fillWater", false);
+  // handle error
+  if (Firebase.failed()) {
+      Serial.print("setting /truth failed:");
+      Serial.println(Firebase.error());  
+      return;
+  }
+  delay(1000);
+
+  // append a new value to /logs
+  String name = Firebase.pushInt("logs", n++);
+  // handle error
+  if (Firebase.failed()) {
+      Serial.print("pushing /logs failed:");
+      Serial.println(Firebase.error());  
+      return;
+  }
+  Serial.print("pushed: /logs/");
+  Serial.println(name);
+  delay(1000);
+}
